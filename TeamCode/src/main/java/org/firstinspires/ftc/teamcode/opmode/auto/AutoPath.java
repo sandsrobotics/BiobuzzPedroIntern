@@ -12,6 +12,8 @@ import static com.pedropathing.ivy.Scheduler.schedule;
 import static com.pedropathing.ivy.commands.Commands.*;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 import static com.pedropathing.ivy.pedro.PedroCommands.follow;
+
+import com.pedropathing.paths.interpolator.Interpolator;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
@@ -20,21 +22,47 @@ import org.firstinspires.ftc.teamcode.pedro.PanelsDrawing;
 
 @Autonomous(name = "AutoPath", group = "Autonomous")
 public class AutoPath extends LinearOpMode {
-
     private Follower follower;
 
+    /************************************************************************
+    / Coordinates only paste here ******************************************/
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
     private final Pose start = poseFactory.of(8.5834, 8, 90);
-    private final Pose path1 = poseFactory.of(44.8961, 19.2208, 90);
+    private final Pose path1 = poseFactory.of(36.6995, 12.5341, 0);
     private final Pose path1Control1 = poseFactory.of(14.1671, 45.9466, 0);
-    private final Pose point2 = poseFactory.of(27.0568, 104.765, 58.2402);
-    private final Pose point2Control1 = poseFactory.of(5.4405, 70.4244, 0);
-    private final Pose point3 = poseFactory.of(77.5033, 116.0417, -25.4711);
-    private final Pose point3Control1 = poseFactory.of(46.2649, 131.1007, 0);
-    private final Pose point4 = poseFactory.of(73.4675, 64.3192, 157.3025);
-    private final Pose point4Control1 = poseFactory.of(40.0013, 78.047, 0);
-    private final Pose point5 = poseFactory.of(47.3199, 23.8325, -122.8557);
+    private final Pose path1Segment1Start = poseFactory.of(36.6995, 12.5341, 0);
+    private final Pose path1Segment1End = poseFactory.of(36.6995, 12.5341, 0);
+    private final Pose point2 = poseFactory.of(73.9037, 109.0227, -22.6285);
+    private final Pose point2Control1 = poseFactory.of(1.9433, 139.5845, 0);
+    private final Pose point3 = poseFactory.of(124.8044, 98.8314, 0);
+    private final Pose point3Control1 = poseFactory.of(128.1854, 136.5206, 0);
+    private final Pose point3Segment1Start = poseFactory.of(124.8044, 98.8314, 0);
+    private final Pose point3Segment1End = poseFactory.of(124.8044, 98.8314, 0);
+    private final Pose point4 = poseFactory.of(123.8938, 54.2463, -91.1701);
+    private final Pose point5 = poseFactory.of(93.513, 14.6448, 89.6449);
+    private final Pose point5Control1 = poseFactory.of(93.5488, 44.9809, 0);
+
+    public Path path1() {
+        return curve(start, path1Control1, path1).heading(Interpolator.piecewise().until(1, Interpolator.linear(path1Segment1Start, path1Segment1End)));
+    }
+
+    public Path path2() {
+        return curve(path1, point2Control1, point2).tangent();
+    }
+
+    public Path path3() {
+        return curve(point2, point3Control1, point3).heading(Interpolator.piecewise().until(1, Interpolator.linear(point3Segment1Start, point3Segment1End)));
+    }
+
+    public Path path4() {
+        return line(point3, point4).tangent();
+    }
+
+    public Path path5() {
+        return curve(point4, point5Control1, point5).reverseTangent();
+    }
+    /************************************************************************/
 
     // Autonomous routine
     public Command autoRoutine() {
@@ -75,25 +103,5 @@ public class AutoPath extends LinearOpMode {
 
             telemetry.update();
         }
-    }
-
-    public Path path1() {
-        return curve(start, path1Control1, path1).constant(path1);
-    }
-
-    public Path path2() {
-        return curve(path1, point2Control1, point2).tangent();
-    }
-
-    public Path path3() {
-        return curve(point2, point3Control1, point3).tangent();
-    }
-
-    public Path path4() {
-        return curve(point3, point4Control1, point4).reverseTangent();
-    }
-
-    public Path path5() {
-        return line(point4, point5).tangent();
     }
 }
