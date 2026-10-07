@@ -19,10 +19,12 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 import org.firstinspires.ftc.teamcode.pedro.PanelsDrawing;
+import org.firstinspires.ftc.teamcode.subsystem.Arm;
 
 @Autonomous(name = "AutoPath", group = "Autonomous")
 public class AutoPath extends LinearOpMode {
     private Follower follower;
+    private Arm arm;
 
     /************************************************************************
     / Coordinates only paste here ******************************************/
@@ -44,7 +46,7 @@ public class AutoPath extends LinearOpMode {
     private final Pose point5Control1 = poseFactory.of(93.5488, 44.9809, 0);
 
     public Path path1() {
-        return curve(start, path1Control1, path1).heading(Interpolator.piecewise().until(1, Interpolator.linear(path1Segment1Start, path1Segment1End)));
+        return curve(start, path1Control1, path1).tangent();
     }
 
     public Path path2() {
@@ -69,9 +71,29 @@ public class AutoPath extends LinearOpMode {
         return sequential(
                 follow(follower, path1()),
                 follow(follower, path2()),
+                raiseArm(),
                 follow(follower, path3()),
                 follow(follower, path4()),
                 follow(follower, path5())
+        );
+    }
+
+    // Arm commands
+    public Command raiseArm() {
+        return instant(() -> arm.up());
+    }
+
+    public Command lowerArm() {
+        return instant(() -> arm.down());
+    }
+
+    // Raise, give the servo time to move, then lower again
+    public Command armCycle() {
+        return sequential(
+                raiseArm(),
+                waitMs(800),
+                lowerArm(),
+                waitMs(500)
         );
     }
 
@@ -79,6 +101,8 @@ public class AutoPath extends LinearOpMode {
     public void runOpMode() {
         Scheduler.reset();
         follower = Constants.create(hardwareMap);
+        arm = new Arm(hardwareMap);
+        arm.down();                 // known start position
         follower.setPose(start);
         follower.update();
         PanelsDrawing.init();

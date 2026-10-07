@@ -12,6 +12,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 import org.firstinspires.ftc.teamcode.pedro.PanelsDrawing;
+import org.firstinspires.ftc.teamcode.subsystem.Arm;
 
 /**
  * Field-centric omni (mecanum) drive using the goBILDA Pinpoint for heading and position.
@@ -22,6 +23,7 @@ import org.firstinspires.ftc.teamcode.pedro.PanelsDrawing;
  *   right bumper - slow mode
  *   back         - re-zero driver heading to the robot's current facing
  *   start        - toggle field-centric / robot-centric
+ *   A            - toggle arm up / down
  *
  * Telemetry shows the Pinpoint pose (Pedro field coordinates: 0-144 in, origin bottom-left,
  * heading 0 = +x) and a small map of the field with the robot's location and facing.
@@ -44,6 +46,8 @@ public class PinpointOmniDrive extends LinearOpMode {
         PinpointLocalizer localizer = new PinpointLocalizer(hardwareMap, Constants.localizerConfig);
         Mecanum drivetrain = new Mecanum(hardwareMap, Constants.drivetrainConfig);
         drivetrain.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        Arm arm = new Arm(hardwareMap);
+        arm.down();
 
         telemetry.setDisplayFormat(Telemetry.DisplayFormat.MONOSPACE);
         PanelsDrawing.init();
@@ -65,7 +69,7 @@ public class PinpointOmniDrive extends LinearOpMode {
 
         double driverHeadingOffset = start.heading();
         boolean fieldCentric = false;
-        boolean lastBack = false, lastStart = false;
+        boolean lastBack = false, lastStart = false, lastA = false;
 
         while (opModeIsActive()) {
             localizer.update();
@@ -74,8 +78,10 @@ public class PinpointOmniDrive extends LinearOpMode {
 
             if (gamepad1.back && !lastBack) driverHeadingOffset = pose.heading();
             if (gamepad1.start && !lastStart) fieldCentric = !fieldCentric;
+            if (gamepad1.a && !lastA) arm.toggle();
             lastBack = gamepad1.back;
             lastStart = gamepad1.start;
+            lastA = gamepad1.a;
 
             double forward = -gamepad1.left_stick_y;
             double strafe = -gamepad1.left_stick_x;   // positive = left
@@ -96,6 +102,7 @@ public class PinpointOmniDrive extends LinearOpMode {
 
             telemetry.addData("Mode", fieldCentric ? "FIELD-centric" : "ROBOT-centric");
             telemetry.addData("Slow", gamepad1.right_bumper);
+            telemetry.addData("Arm", arm.isUp() ? "UP" : "DOWN");
             PanelsDrawing.draw(pose);
             addPoseTelemetry(pose);
             telemetry.update();
