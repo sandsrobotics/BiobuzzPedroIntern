@@ -30,27 +30,27 @@ public class AutoPath extends LinearOpMode {
     / Coordinates only paste here ******************************************/
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
-    private final Pose start = poseFactory.of(8.5834, 8, 90);
-    private final Pose path1 = poseFactory.of(36.6995, 12.5341, 0);
-    private final Pose path1Control1 = poseFactory.of(14.1671, 45.9466, 0);
-    private final Pose path1Segment1Start = poseFactory.of(36.6995, 12.5341, 0);
-    private final Pose path1Segment1End = poseFactory.of(36.6995, 12.5341, 0);
-    private final Pose point2 = poseFactory.of(73.9037, 109.0227, -22.6285);
+    private final Pose start = poseFactory.of(8.2086, 8, 90);
+    private final Pose path1 = poseFactory.of(28.6405, 48.893, 175.5848);
+    private final Pose path1Control1 = poseFactory.of(52.5876, 47.2585, 0);
+    private final Pose point2 = poseFactory.of(46.5407, 107.336, 0);
     private final Pose point2Control1 = poseFactory.of(1.9433, 139.5845, 0);
-    private final Pose point3 = poseFactory.of(124.8044, 98.8314, 0);
-    private final Pose point3Control1 = poseFactory.of(128.1854, 136.5206, 0);
-    private final Pose point3Segment1Start = poseFactory.of(124.8044, 98.8314, 0);
-    private final Pose point3Segment1End = poseFactory.of(124.8044, 98.8314, 0);
-    private final Pose point4 = poseFactory.of(123.8938, 54.2463, -91.1701);
-    private final Pose point5 = poseFactory.of(93.513, 14.6448, 89.6449);
-    private final Pose point5Control1 = poseFactory.of(93.5488, 44.9809, 0);
+    private final Pose point3 = poseFactory.of(71.0157, 98.0818, 0);
+    private final Pose point3Control1 = poseFactory.of(70.2735, 134.2716, 0);
+    private final Pose point3Segment1Start = poseFactory.of(71.0157, 98.0818, 0);
+    private final Pose point3Segment1End = poseFactory.of(71.0157, 98.0818, 0);
+    private final Pose point4 = poseFactory.of(71.2296, 12.6397, -89.8566);
+    private final Pose point5 = poseFactory.of(101.1971, 20.2673, 151.4428);
+    private final Pose point5Control1 = poseFactory.of(80.8044, 31.4869, 0);
+    private final Pose point6 = poseFactory.of(119.5331, 92.9146, -104.1655);
+    private final Pose point7 = poseFactory.of(99.3576, 122.8662, -56.0357);
 
     public Path path1() {
         return curve(start, path1Control1, path1).tangent();
     }
 
     public Path path2() {
-        return curve(path1, point2Control1, point2).tangent();
+        return curve(path1, point2Control1, point2).constant(point2);
     }
 
     public Path path3() {
@@ -64,6 +64,15 @@ public class AutoPath extends LinearOpMode {
     public Path path5() {
         return curve(point4, point5Control1, point5).reverseTangent();
     }
+
+    public Path path6() {
+        return line(point5, point6).reverseTangent();
+    }
+
+    public Path path7() {
+        return line(point6, point7).reverseTangent();
+    }
+
     /************************************************************************/
 
     // Autonomous routine

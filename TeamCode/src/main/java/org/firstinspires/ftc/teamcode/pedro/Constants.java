@@ -35,7 +35,7 @@ public class Constants {
     });
 
     public static PinpointConfig localizerConfig = new PinpointConfig(c -> {
-        c.name.set("odo");
+        c.name.set("pinpoint");
         c.podType.set(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_SWINGARM_POD);
         c.xPodOffset.set(-3.75);
         c.yPodOffset.set(-0.125);

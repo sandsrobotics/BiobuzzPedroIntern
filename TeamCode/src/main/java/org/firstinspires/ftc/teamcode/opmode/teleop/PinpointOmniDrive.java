@@ -13,6 +13,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 import org.firstinspires.ftc.teamcode.pedro.PanelsDrawing;
 import org.firstinspires.ftc.teamcode.subsystem.Arm;
+import org.firstinspires.ftc.teamcode.subsystem.Flower;
 
 /**
  * Field-centric omni (mecanum) drive using the goBILDA Pinpoint for heading and position.
@@ -48,6 +49,9 @@ public class PinpointOmniDrive extends LinearOpMode {
         drivetrain.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         Arm arm = new Arm(hardwareMap);
         arm.down();
+        Flower flower = new Flower(hardwareMap);
+        flower.up();
+
 
         telemetry.setDisplayFormat(Telemetry.DisplayFormat.MONOSPACE);
         PanelsDrawing.init();
@@ -69,7 +73,7 @@ public class PinpointOmniDrive extends LinearOpMode {
 
         double driverHeadingOffset = start.heading();
         boolean fieldCentric = false;
-        boolean lastBack = false, lastStart = false, lastA = false;
+        boolean lastBack = false, lastStart = false, lastA = false, lastB = false;
 
         while (opModeIsActive()) {
             localizer.update();
@@ -79,9 +83,11 @@ public class PinpointOmniDrive extends LinearOpMode {
             if (gamepad1.back && !lastBack) driverHeadingOffset = pose.heading();
             if (gamepad1.start && !lastStart) fieldCentric = !fieldCentric;
             if (gamepad1.a && !lastA) arm.toggle();
+            if (gamepad1.b && !lastB) flower.toggle();
             lastBack = gamepad1.back;
             lastStart = gamepad1.start;
             lastA = gamepad1.a;
+            lastB = gamepad1.b;
 
             double forward = -gamepad1.left_stick_y;
             double strafe = -gamepad1.left_stick_x;   // positive = left
@@ -103,6 +109,7 @@ public class PinpointOmniDrive extends LinearOpMode {
             telemetry.addData("Mode", fieldCentric ? "FIELD-centric" : "ROBOT-centric");
             telemetry.addData("Slow", gamepad1.right_bumper);
             telemetry.addData("Arm", arm.isUp() ? "UP" : "DOWN");
+            telemetry.addData("Flower", flower.isUp() ? "UP" : "DOWN");
             PanelsDrawing.draw(pose);
             addPoseTelemetry(pose);
             telemetry.update();
