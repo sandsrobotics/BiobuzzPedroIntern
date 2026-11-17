@@ -7,6 +7,7 @@ import android.graphics.Color;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.ZZ.ZZ_ServoSSR;
@@ -27,7 +28,7 @@ import org.firstinspires.ftc.teamcode.ZZ.ZZ_ServoSSR;
  *
  * Edit MOTOR_NAME and TICKS_PER_REV below to match the motor under test.
  */
-@TeleOp(name = "Motor RPM Test", group = "Test")
+@TeleOp(name = "Two Ball Spin", group = "Test")
 public class TwoBallSpinTest extends LinearOpMode {
 
     static final String MOTOR_NAME = "motor0";
@@ -37,21 +38,22 @@ public class TwoBallSpinTest extends LinearOpMode {
     static final double MAX_RPM = 6000;
 
     // Color sensor (I2C bus 1) and servo (servo port 0) configuration names
-    static final String COLOR_NAME = "color";
+    static final String COLOR_1_NAME = "color1";
+    static final String COLOR_2_NAME = "color2";
     static final String SERVO_NAME = "servo0";
 
     // Time (ms) for the servo to travel its full range, used by ZZ_ServoSSR to estimate move completion
     static final int SERVO_SWEEP_MS = 1000;  // TBD
 
     // TBD servo positions (0..1) - tune on the robot
-    static final double POLLEN_POS = 0.327;
-    static final double NECTAR_POS = 0.126;  // TBD
+    static final double POLLEN_POS = 0.591;
+    static final double NECTAR_POS = 0.355;  // TBD
 
     // Color classification (hue in degrees, 0-360). Tune on the robot.
     static final float MIN_SATURATION = 0.4f;  // below this the reading is treated as "no color"
     static final float MIN_VALUE = 0.05f;      // below this (too dark / nothing in view) = none
     static final float YELLOW_MIN = 61, YELLOW_MAX = 90;
-    static final float BLUE_MIN = 180, BLUE_MAX = 260;
+    static final float BLUE_MIN = 190, BLUE_MAX = 260;
     static final float RED_MAX = 60, RED_MIN = 40;  // red wraps around 0
 
     static final int COLOR_LOOP_INTERVAL = 10;  // read the color sensor every Nth loop
@@ -60,27 +62,32 @@ public class TwoBallSpinTest extends LinearOpMode {
 
     static final int LARGE_STEP = 100;
     static final int SMALL_STEP = 10;
+    public static PIDFCoefficients launchSpinPID = new PIDFCoefficients(100,0,0,12.4);
 
     @Override
     public void runOpMode() {
         DcMotorEx motor = hardwareMap.get(DcMotorEx.class, MOTOR_NAME);
-        motor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
-        motor.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+//        motor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        motor.setDirection(DcMotorEx.Direction.REVERSE);
         motor.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
-        motor.setDirection(DcMotorEx.Direction.FORWARD);
+        motor.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        motor.setPIDFCoefficients(DcMotorEx.RunMode.RUN_USING_ENCODER, launchSpinPID);
 
-        NormalizedColorSensor colorSensor = hardwareMap.get(NormalizedColorSensor.class, COLOR_NAME);
-        colorSensor.setGain(2);
+        NormalizedColorSensor colorSensorTop = hardwareMap.get(NormalizedColorSensor.class, COLOR_1_NAME);
+        NormalizedColorSensor colorSensorBottom = hardwareMap.get(NormalizedColorSensor.class, COLOR_2_NAME);
+        colorSensorTop.setGain(2);
+        colorSensorBottom.setGain(2);
         ZZ_ServoSSR servo = new ZZ_ServoSSR(hardwareMap.get(Servo.class, SERVO_NAME))
                 .setSweepTime(SERVO_SWEEP_MS);
         String servoState = "unset";
-        Seen seen = Seen.NONE;
+        Seen seenTop = Seen.NONE;
+        Seen seenBottom = Seen.NONE;
         float[] hsv = new float[3];
         int loopCount = 0;
 
         boolean on = false;
-        boolean reversed = false;
-        int targetRpm = 0;
+        boolean reversed = true;
+        int targetRpm = 1900;
 
         // previous button states for edge detection
         boolean pA = false, pB = false, pUp = false, pDown = false, pLeft = false, pRight = false;
@@ -120,16 +127,19 @@ public class TwoBallSpinTest extends LinearOpMode {
             }
 
             // Color -> servo. I2C reads are slow, so only read every COLOR_LOOP_INTERVAL loops,
-            // and only while the motor is on. If nothing recognizable is seen, leave the servo as it was.
+            // If nothing recognizable is seen, leave the servo as it was.
             loopCount++;
-            if (on && loopCount % COLOR_LOOP_INTERVAL == 0) {
-                NormalizedRGBA rgba = colorSensor.getNormalizedColors();
+            if (loopCount % COLOR_LOOP_INTERVAL == 0) {
+                NormalizedRGBA rgba = colorSensorTop.getNormalizedColors();
                 Color.colorToHSV(rgba.toColor(), hsv);
-                seen = classify(hsv,seen);
-                if (seen == Seen.POLLEN) {
+                seenTop = classify(hsv,seenTop);
+                rgba = colorSensorBottom.getNormalizedColors();
+                Color.colorToHSV(rgba.toColor(), hsv);
+                seenBottom = classify(hsv,seenBottom);
+                if (seenTop == Seen.POLLEN || seenBottom == Seen.POLLEN) {
                     servo.setPosition(POLLEN_POS);
                     servoState = "POLLEN";
-                } else if (seen == Seen.NECTAR) {
+                } else if (seenTop == Seen.NECTAR || seenBottom == Seen.NECTAR) {
                     servo.setPosition(NECTAR_POS);
                     servoState = "NECTAR";
                 }
@@ -143,7 +153,8 @@ public class TwoBallSpinTest extends LinearOpMode {
             telemetry.addData("Target RPM", targetRpm);
             telemetry.addData("Actual RPM", "%.0f", Math.abs(motor.getVelocity()) * 60.0 / TICKS_PER_REV);
             telemetry.addData("Ticks/rev", TICKS_PER_REV);
-            telemetry.addData("Color seen", seen);
+            telemetry.addData("Color seen top", seenTop);
+            telemetry.addData("Color seen top", seenBottom);
             telemetry.addData("HSV", "%.0f / %.2f / %.2f", hsv[0], hsv[1], hsv[2]);
             telemetry.addData("Servo set to", servoState + (servo.isDone() ? " (done)" : " (moving)"));
             telemetry.update();
