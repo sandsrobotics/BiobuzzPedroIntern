@@ -1,5 +1,9 @@
 package org.firstinspires.ftc.teamcode.opmode.teleop;
 
+import com.bylazar.configurables.annotations.Configurable;
+import com.bylazar.camerastream.PanelsCameraStream;
+import com.bylazar.telemetry.PanelsTelemetry;
+import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import android.graphics.Color;
@@ -10,7 +14,12 @@ import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.teamcode.ZZ.ZZ_CameraStream;
 import org.firstinspires.ftc.teamcode.ZZ.ZZ_ServoSSR;
+import org.firstinspires.ftc.vision.VisionPortal;
+
+import android.util.Size;
 
 /**
  * Bench test: turn one motor on/off and set its target RPM from the Driver Station gamepad.
@@ -28,6 +37,8 @@ import org.firstinspires.ftc.teamcode.ZZ.ZZ_ServoSSR;
  *
  * Edit MOTOR_NAME and TICKS_PER_REV below to match the motor under test.
  */
+
+@Configurable
 @TeleOp(name = "Two Ball Spin", group = "Test")
 public class TwoBallSpinTest extends LinearOpMode {
 
@@ -40,21 +51,25 @@ public class TwoBallSpinTest extends LinearOpMode {
     // Color sensor (I2C bus 1) and servo (servo port 0) configuration names
     static final String COLOR_1_NAME = "color1";
     static final String COLOR_2_NAME = "color2";
+    // Webcam configuration name; streamed to the Panels Camera Stream page
+    static final String WEBCAM_NAME = "Webcam 1";
+    static final int CAMERA_STREAM_FPS = 15;
+
     static final String SERVO_NAME = "servo0";
 
     // Time (ms) for the servo to travel its full range, used by ZZ_ServoSSR to estimate move completion
     static final int SERVO_SWEEP_MS = 1000;  // TBD
 
     // TBD servo positions (0..1) - tune on the robot
-    static final double POLLEN_POS = 0.591;
-    static final double NECTAR_POS = 0.355;  // TBD
+    static final double POLLEN_POS = 0.684;
+    static final double NECTAR_POS = 0.360;  // TBD
 
     // Color classification (hue in degrees, 0-360). Tune on the robot.
     static final float MIN_SATURATION = 0.4f;  // below this the reading is treated as "no color"
     static final float MIN_VALUE = 0.05f;      // below this (too dark / nothing in view) = none
     static final float YELLOW_MIN = 61, YELLOW_MAX = 90;
     static final float BLUE_MIN = 190, BLUE_MAX = 260;
-    static final float RED_MAX = 60, RED_MIN = 40;  // red wraps around 0
+    static final float RED_MAX = 50, RED_MIN = 15;  // red wraps around 0
 
     static final int COLOR_LOOP_INTERVAL = 10;  // read the color sensor every Nth loop
 
@@ -82,7 +97,8 @@ public class TwoBallSpinTest extends LinearOpMode {
         String servoState = "unset";
         Seen seenTop = Seen.NONE;
         Seen seenBottom = Seen.NONE;
-        float[] hsv = new float[3];
+        float[] hsvTop = new float[3];
+        float[] hsvBot = new float[3];
         int loopCount = 0;
 
         boolean on = false;
@@ -91,6 +107,16 @@ public class TwoBallSpinTest extends LinearOpMode {
 
         // previous button states for edge detection
         boolean pA = false, pB = false, pUp = false, pDown = false, pLeft = false, pRight = false;
+
+        TelemetryManager panels = PanelsTelemetry.INSTANCE.getTelemetry();
+
+        ZZ_CameraStream cameraStream = new ZZ_CameraStream();
+        VisionPortal portal = new VisionPortal.Builder()
+                .setCamera(hardwareMap.get(WebcamName.class, WEBCAM_NAME))
+                .setCameraResolution(new Size(640, 480))
+                .addProcessor(cameraStream)
+                .build();
+        PanelsCameraStream.INSTANCE.startStream(cameraStream, CAMERA_STREAM_FPS);
 
         telemetry.addLine("Motor RPM Test: press START");
         telemetry.addData("Motor", MOTOR_NAME);
@@ -131,17 +157,17 @@ public class TwoBallSpinTest extends LinearOpMode {
             loopCount++;
             if (loopCount % COLOR_LOOP_INTERVAL == 0) {
                 NormalizedRGBA rgba = colorSensorTop.getNormalizedColors();
-                Color.colorToHSV(rgba.toColor(), hsv);
-                seenTop = classify(hsv,seenTop);
+                Color.colorToHSV(rgba.toColor(), hsvTop);
+                seenTop = classify(hsvTop,seenTop);
                 rgba = colorSensorBottom.getNormalizedColors();
-                Color.colorToHSV(rgba.toColor(), hsv);
-                seenBottom = classify(hsv,seenBottom);
-                if (seenTop == Seen.POLLEN || seenBottom == Seen.POLLEN) {
-                    servo.setPosition(POLLEN_POS);
-                    servoState = "POLLEN";
-                } else if (seenTop == Seen.NECTAR || seenBottom == Seen.NECTAR) {
+                Color.colorToHSV(rgba.toColor(), hsvBot);
+                seenBottom = classify(hsvBot,seenBottom);
+                if (seenTop == Seen.NECTAR || seenBottom == Seen.NECTAR) {
                     servo.setPosition(NECTAR_POS);
                     servoState = "NECTAR";
+                } else if (seenTop == Seen.POLLEN || seenBottom == Seen.POLLEN) {
+                    servo.setPosition(POLLEN_POS);
+                    servoState = "POLLEN";
                 }
             }
 
@@ -153,13 +179,27 @@ public class TwoBallSpinTest extends LinearOpMode {
             telemetry.addData("Target RPM", targetRpm);
             telemetry.addData("Actual RPM", "%.0f", Math.abs(motor.getVelocity()) * 60.0 / TICKS_PER_REV);
             telemetry.addData("Ticks/rev", TICKS_PER_REV);
-            telemetry.addData("Color seen top", seenTop);
-            telemetry.addData("Color seen top", seenBottom);
-            telemetry.addData("HSV", "%.0f / %.2f / %.2f", hsv[0], hsv[1], hsv[2]);
+            telemetry.addData("HSV Top", "%.0f / %.2f / %.2f", hsvTop[0], hsvTop[1], hsvTop[2]);
+            telemetry.addData("Color Top", seenTop);
+            telemetry.addData("----------------------",0);
+            telemetry.addData("HSV Bot", "%.0f / %.2f / %.2f", hsvBot[0], hsvBot[1], hsvBot[2]);
+            telemetry.addData("Color Bot", seenBottom);
+
             telemetry.addData("Servo set to", servoState + (servo.isDone() ? " (done)" : " (moving)"));
             telemetry.update();
+
+            double actualRpm = Math.abs(motor.getVelocity()) * 60.0 / TICKS_PER_REV;
+            panels.debug("State: " + (on ? "ON" : "OFF"));
+            panels.addData("Target RPM", targetRpm);   // addData values are graphable
+            panels.debug(String.format("Actual RPM: %.0f",actualRpm));
+            panels.debug("Color top: " + seenTop + ", bottom: " + seenBottom);
+            panels.debug(String.format("HSV Top: %.0f / %.2f / %.2f", hsvTop[0], hsvTop[1], hsvTop[2]));
+            panels.debug(String.format("HSV Bot: %.0f / %.2f / %.2f", hsvBot[0], hsvBot[1], hsvBot[2]));
+            panels.update();
         }
 
+        PanelsCameraStream.INSTANCE.stopStream();
+        portal.close();
         motor.setPower(0);
     }
 
@@ -169,7 +209,7 @@ public class TwoBallSpinTest extends LinearOpMode {
             if (h >= YELLOW_MIN && h <= YELLOW_MAX) return Seen.POLLEN;
             if (h >= BLUE_MIN && h <= BLUE_MAX) return Seen.NECTAR;
             if (h <= RED_MAX && h >= RED_MIN) return Seen.NECTAR;
-        }
+        } else return Seen.NONE;
         return seen;
     }
 }
